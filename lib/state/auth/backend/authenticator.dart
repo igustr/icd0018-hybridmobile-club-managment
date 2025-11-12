@@ -21,9 +21,9 @@ class Authenticator {
 
   // Email + Password
   Future<AuthResult> loginWithEmailAndPassword(
-      String email,
-      String password,
-      ) async {
+    String email,
+    String password,
+  ) async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
@@ -44,7 +44,7 @@ class Authenticator {
       }
 
       final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+          await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -58,7 +58,6 @@ class Authenticator {
     }
   }
 
-
   // Apple Authentication
   Future<AuthResult> loginWithApple() async {
     try {
@@ -66,14 +65,16 @@ class Authenticator {
       final nonce = _sha256ofString(rawNonce);
 
       final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
         nonce: nonce,
       );
 
-      final oauthCredential = OAuthProvider("apple.com").credential(
-        idToken: appleCredential.identityToken,
-        rawNonce: rawNonce,
-      );
+      final oauthCredential = OAuthProvider(
+        "apple.com",
+      ).credential(idToken: appleCredential.identityToken, rawNonce: rawNonce);
 
       await FirebaseAuth.instance.signInWithCredential(oauthCredential);
       return AuthResult.success;
@@ -82,9 +83,10 @@ class Authenticator {
     }
   }
 
-// Apple sign-in helpers
+  // Apple sign-in helpers
   String _generateNonce([int length = 32]) {
-    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = List.generate(length, (_) {
       final index = DateTime.now().microsecondsSinceEpoch % charset.length;
       return charset[index];
