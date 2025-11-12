@@ -3,8 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:icd0018_hybridmobile_club_managment/firebase_options.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/providers/is_logged_in_provider.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/login/login_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/main/main_view.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/welcome/welcome_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
           if (isLoggedIn) {
             return const MainView();
           } else {
-            return const LoginView();
+            return const WelcomeView();
           }
         }));
   }

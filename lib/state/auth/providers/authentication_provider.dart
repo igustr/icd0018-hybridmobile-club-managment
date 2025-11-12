@@ -26,8 +26,29 @@ class Authentication extends _$Authentication {
 
     final result = await _authenticator.loginWithEmailAndPassword(email, password);
 
-    // Simulate a network request on slow environments
-    //await Future.delayed(const Duration(seconds: 3));
+    state = AuthState(
+      result: result,
+      isLoading: false,
+      userId: _authenticator.userId,
+    );
+  }
+
+  Future<void> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true);
+
+    final result = await _authenticator.loginWithGoogle();
+
+    state = AuthState(
+      result: result,
+      isLoading: false,
+      userId: _authenticator.userId,
+    );
+  }
+
+  Future<void> loginWithApple() async {
+    state = state.copyWith(isLoading: true);
+
+    final result = await _authenticator.loginWithApple();
 
     state = AuthState(
       result: result,

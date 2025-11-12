@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -61,24 +62,28 @@ class Authenticator {
   // Apple Authentication
   Future<AuthResult> loginWithApple() async {
     try {
-      final rawNonce = _generateNonce();
-      final nonce = _sha256ofString(rawNonce);
+      if (kIsWeb) {
+        final provider = OAuthProvider('apple.com');
+        await FirebaseAuth.instance.signInWithPopup(provider);
+        return AuthResult.success;
+      } else {
+        final rawNonce = _generateNonce();
+        final nonce = _sha256ofString(rawNonce);
 
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: nonce,
-      );
+        final appleCredential = await SignInWithApple.getAppleIDCredential(
+          scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+          nonce: nonce,
+        );
 
-      final oauthCredential = OAuthProvider(
-        "apple.com",
-      ).credential(idToken: appleCredential.identityToken, rawNonce: rawNonce);
+        final oauthCredential = OAuthProvider('apple.com').credential(
+          idToken: appleCredential.identityToken,
+          rawNonce: rawNonce,
+        );
 
-      await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-      return AuthResult.success;
-    } catch (e) {
+        await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+        return AuthResult.success;
+      }
+    } catch (_) {
       return AuthResult.failure;
     }
   }
