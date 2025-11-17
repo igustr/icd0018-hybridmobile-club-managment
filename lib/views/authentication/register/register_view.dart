@@ -42,6 +42,8 @@ class RegisterViewState extends ConsumerState<RegisterView> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
+    print('name: $name, email: $email, password: $password');
+
     await ref.read(authenticationProvider.notifier).registerWithEmailAndPassword(
       name: name,
       email: email,
@@ -152,7 +154,7 @@ class RegisterViewState extends ConsumerState<RegisterView> {
                 // Register button
                 TextButton(
                   style: TextButton.styleFrom(
-                    backgroundColor: AppColors.secondaryColor,
+                    backgroundColor: AppColors.lightBlue,
                     foregroundColor: AppColors.loginButtonTextColor,
                   ),
                   onPressed: isLoading ? null : _attemptRegister,

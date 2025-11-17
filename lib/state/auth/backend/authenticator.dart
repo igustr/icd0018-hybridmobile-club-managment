@@ -1,107 +1,64 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/typedef/user_id.dart';
 
+import 'email_auth.dart';
+import 'google_auth.dart';
+import 'apple_auth.dart';
+
 class Authenticator {
-  const Authenticator();
+  Authenticator({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+      _emailAuth = EmailAuth(firebaseAuth ?? FirebaseAuth.instance),
+      _googleAuth = GoogleAuth(
+        firebaseAuth ?? FirebaseAuth.instance,
+        googleSignIn ?? GoogleSignIn(),
+      ),
+      _appleAuth = AppleAuth(firebaseAuth ?? FirebaseAuth.instance);
 
-  bool get isAlreadyLoggedIn => userId != null;
+  final FirebaseAuth _firebaseAuth;
+  final EmailAuth _emailAuth;
+  final GoogleAuth _googleAuth;
+  final AppleAuth _appleAuth;
 
-  UserId? get userId => FirebaseAuth.instance.currentUser?.uid;
+  bool get isAlreadyLoggedIn => _emailAuth.isAlreadyLoggedIn;
+
+  UserId? get userId => _firebaseAuth.currentUser?.uid;
 
   Future<void> logOut() async {
-    await FirebaseAuth.instance.signOut();
-    await GoogleSignIn().signOut();
+    await _emailAuth.logOut();
+    await _googleAuth.logOut();
   }
 
-  // Email + Password
-  Future<AuthResult> loginWithEmailAndPassword(
-    String email,
-    String password,
-  ) async {
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return AuthResult.success;
-    } catch (e) {
-      return AuthResult.failure;
-    }
+  // EMAIL/PASSWORD
+
+  Future<AuthResult> loginWithEmailAndPassword(String email, String password) {
+    return _emailAuth.loginWithEmailAndPassword(email, password);
   }
 
-  // Google Authentication
-  Future<AuthResult> loginWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        return AuthResult.aborted;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      return AuthResult.success;
-    } catch (e) {
-      return AuthResult.failure;
-    }
+  Future<AuthResult> registerWithEmailAndPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) {
+    return _emailAuth.registerWithEmailAndPassword(
+      name: name,
+      email: email,
+      password: password,
+    );
   }
 
-  // Apple Authentication
-  Future<AuthResult> loginWithApple() async {
-    try {
-      if (kIsWeb) {
-        final provider = OAuthProvider('apple.com');
-        await FirebaseAuth.instance.signInWithPopup(provider);
-        return AuthResult.success;
-      } else {
-        final rawNonce = _generateNonce();
-        final nonce = _sha256ofString(rawNonce);
+  // GOOGLE
 
-        final appleCredential = await SignInWithApple.getAppleIDCredential(
-          scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
-          nonce: nonce,
-        );
-
-        final oauthCredential = OAuthProvider('apple.com').credential(
-          idToken: appleCredential.identityToken,
-          rawNonce: rawNonce,
-        );
-
-        await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-        return AuthResult.success;
-      }
-    } catch (_) {
-      return AuthResult.failure;
-    }
+  Future<AuthResult> loginWithGoogle() {
+    return _googleAuth.loginWithGoogle();
   }
 
-  // Apple sign-in helpers
-  String _generateNonce([int length = 32]) {
-    const charset =
-        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final random = List.generate(length, (_) {
-      final index = DateTime.now().microsecondsSinceEpoch % charset.length;
-      return charset[index];
-    });
-    return random.join();
-  }
+  // APPLE
 
-  String _sha256ofString(String input) {
-    final bytes = utf8.encode(input);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
+  Future<AuthResult> loginWithApple() {
+    return _appleAuth.loginWithApple();
   }
 }

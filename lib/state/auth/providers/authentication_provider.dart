@@ -1,13 +1,14 @@
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:icd0018_hybridmobile_club_managment/state/auth/backend/authenticator.dart';
+
+import '../backend/authenticator.dart';
 
 part 'authentication_provider.g.dart';
 
 @riverpod
 class Authentication extends _$Authentication {
-  final _authenticator = const Authenticator();
+  final Authenticator _authenticator = Authenticator();
 
   @override
   AuthState build() {
@@ -21,10 +22,14 @@ class Authentication extends _$Authentication {
     return AuthState.unknown();
   }
 
+  // LOGIN SECTION
   Future<void> loginWithEmailAndPassword(String email, String password) async {
     state = state.copyWith(isLoading: true);
 
-    final result = await _authenticator.loginWithEmailAndPassword(email, password);
+    final result = await _authenticator.loginWithEmailAndPassword(
+      email,
+      password,
+    );
 
     state = AuthState(
       result: result,
@@ -61,4 +66,29 @@ class Authentication extends _$Authentication {
     await _authenticator.logOut();
     state = AuthState.unknown();
   }
+
+  // REGISTER SECTION
+
+  Future<void> registerWithEmailAndPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true);
+
+    final result = await _authenticator.registerWithEmailAndPassword(
+      name: name,
+      email: email,
+      password: password,
+    );
+
+    /// TODO (Save user info to database)
+
+    state = AuthState(
+      result: result,
+      isLoading: false,
+      userId: _authenticator.userId,
+    );
+  }
+
 }
