@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/strings.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/authentication/widgets/divider_with_margins.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
-import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/providers/authentication_provider.dart';
 import '../validators/validators.dart';
 
@@ -32,19 +32,62 @@ class LoginViewState extends ConsumerState<LoginView> {
 
   Future<void> _attemptLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    await ref
+
+    final result = await ref
         .read(authenticationProvider.notifier)
         .loginWithEmailAndPassword(email, password);
+
+    if (!mounted) return;
+
+    if (result == AuthResult.success) {
+      context.go('/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Authentication failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _attemptGoogleLogin() async {
+    final result =
     await ref.read(authenticationProvider.notifier).loginWithGoogle();
+
+    if (!mounted) return;
+
+    if (result == AuthResult.success) {
+      context.go('/home');
+    } else if (result != AuthResult.aborted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google authentication failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _attemptAppleLogin() async {
+    final result =
     await ref.read(authenticationProvider.notifier).loginWithApple();
+
+    if (!mounted) return;
+
+    if (result == AuthResult.success) {
+      context.go('/home');
+    } else if (result != AuthResult.aborted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Apple authentication failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -52,19 +95,7 @@ class LoginViewState extends ConsumerState<LoginView> {
     final authState = ref.watch(authenticationProvider);
     final isLoading = authState.isLoading;
 
-    // Show apple auth on if ios or mac
     final showApple = kIsWeb || defaultTargetPlatform != TargetPlatform.android;
-
-    ref.listen(authenticationProvider, (AuthState? prev, AuthState current) {
-      if (current.result == AuthResult.failure && !current.isLoading) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    });
 
     return Scaffold(
       appBar: AppBar(title: const Text(Strings.appName)),
@@ -85,13 +116,13 @@ class LoginViewState extends ConsumerState<LoginView> {
                 const DividerWithMargins(20),
                 Text(
                   Strings.logIntoYourAccount,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(height: 1.5),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(height: 1.5),
                 ),
                 const SizedBox(height: 20),
 
-                // Email
                 TextFormField(
                   controller: _emailController,
                   enabled: !isLoading,
@@ -104,7 +135,6 @@ class LoginViewState extends ConsumerState<LoginView> {
                 ),
                 const SizedBox(height: 16),
 
-                // Password
                 TextFormField(
                   controller: _passwordController,
                   enabled: !isLoading,
@@ -117,25 +147,23 @@ class LoginViewState extends ConsumerState<LoginView> {
                 ),
                 const SizedBox(height: 16),
 
-                // Email/Password login button
                 TextButton(
                   style: TextButton.styleFrom(
-                    backgroundColor: AppColors.loginButtonColor,
+                    backgroundColor: AppColors.lightBlue,
                     foregroundColor: AppColors.loginButtonTextColor,
                   ),
                   onPressed: isLoading ? null : _attemptLogin,
                   child: isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Text('Login'),
                 ),
 
                 const DividerWithMargins(20),
 
-                // Google
                 OutlinedButton.icon(
                   icon: const FaIcon(
                     FontAwesomeIcons.google,
@@ -146,7 +174,6 @@ class LoginViewState extends ConsumerState<LoginView> {
                 ),
                 const SizedBox(height: 10),
 
-                // Apple (iOS/macOS)
                 if (showApple)
                   OutlinedButton.icon(
                     icon: const Icon(Icons.apple, size: 24),

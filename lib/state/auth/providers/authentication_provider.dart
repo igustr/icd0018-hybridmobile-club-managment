@@ -23,7 +23,10 @@ class Authentication extends _$Authentication {
   }
 
   // LOGIN SECTION
-  Future<void> loginWithEmailAndPassword(String email, String password) async {
+  Future<AuthResult> loginWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     state = state.copyWith(isLoading: true);
 
     final result = await _authenticator.loginWithEmailAndPassword(
@@ -36,9 +39,11 @@ class Authentication extends _$Authentication {
       isLoading: false,
       userId: _authenticator.userId,
     );
+
+    return result;
   }
 
-  Future<void> loginWithGoogle() async {
+  Future<AuthResult> loginWithGoogle() async {
     state = state.copyWith(isLoading: true);
 
     final result = await _authenticator.loginWithGoogle();
@@ -48,9 +53,11 @@ class Authentication extends _$Authentication {
       isLoading: false,
       userId: _authenticator.userId,
     );
+
+    return result;
   }
 
-  Future<void> loginWithApple() async {
+  Future<AuthResult> loginWithApple() async {
     state = state.copyWith(isLoading: true);
 
     final result = await _authenticator.loginWithApple();
@@ -60,6 +67,8 @@ class Authentication extends _$Authentication {
       isLoading: false,
       userId: _authenticator.userId,
     );
+
+    return result;
   }
 
   Future<void> logOut() async {
@@ -68,8 +77,7 @@ class Authentication extends _$Authentication {
   }
 
   // REGISTER SECTION
-
-  Future<void> registerWithEmailAndPassword({
+  Future<AuthResult> registerWithEmailAndPassword({
     required String name,
     required String email,
     required String password,
@@ -82,13 +90,14 @@ class Authentication extends _$Authentication {
       password: password,
     );
 
-    /// TODO (Save user info to database)
+    // TODO: Save user info to database (Firestore or your backend)
 
     state = AuthState(
       result: result,
       isLoading: false,
       userId: _authenticator.userId,
     );
-  }
 
+    return result;
+  }
 }
