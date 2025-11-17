@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/strings.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/login/widgets/divider_with_margins.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/authentication/widgets/divider_with_margins.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/providers/authentication_provider.dart';
+import '../validators/validators.dart';
 
 class LoginView extends ConsumerStatefulWidget {
   const LoginView({super.key});
@@ -21,26 +22,6 @@ class LoginViewState extends ConsumerState<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-  String? _validateEmail(String? email) {
-    if (email == null || email.isEmpty) return 'Please enter your email';
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$',
-    );
-    if (!emailRegex.hasMatch(email)) return 'Please enter a valid email';
-    return null;
-  }
-
-  String? _validatePassword(String? password) {
-    if (password == null || password.isEmpty)
-      return 'Please enter your password';
-    if (password.length < 5)
-      return 'Password must be at least 5 characters long';
-    if (!RegExp(r'[A-Z]').hasMatch(password)) {
-      return 'Password must contain at least one uppercase letter';
-    }
-    return null;
-  }
 
   @override
   void dispose() {
@@ -71,7 +52,7 @@ class LoginViewState extends ConsumerState<LoginView> {
     final authState = ref.watch(authenticationProvider);
     final isLoading = authState.isLoading;
 
-    // show apple auth or not
+    // Show apple auth on if ios or mac
     final showApple = kIsWeb || defaultTargetPlatform != TargetPlatform.android;
 
     ref.listen(authenticationProvider, (AuthState? prev, AuthState current) {
@@ -119,7 +100,7 @@ class LoginViewState extends ConsumerState<LoginView> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
+                  validator: validateEmail,
                 ),
                 const SizedBox(height: 16),
 
@@ -132,7 +113,7 @@ class LoginViewState extends ConsumerState<LoginView> {
                     border: OutlineInputBorder(),
                   ),
                   obscureText: true,
-                  validator: _validatePassword,
+                  validator: validatePassword,
                 ),
                 const SizedBox(height: 16),
 

@@ -1,37 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:icd0018_hybridmobile_club_managment/firebase_options.dart';
-import 'package:icd0018_hybridmobile_club_managment/state/auth/providers/is_logged_in_provider.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/main/main_view.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/welcome/welcome_view.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:icd0018_hybridmobile_club_managment/router/router.dart';
+import 'firebase_options.dart';
 
-void main() async {
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const ProviderScope(child: MyApp()));
+
+  runApp(const ProviderScope(child: ClubManagementApp()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ClubManagementApp extends StatelessWidget {
+  const ClubManagementApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        home: Consumer(builder: (context, ref, child) {
-          final isLoggedIn = ref.watch(isLoggedInProvider);
-          if (isLoggedIn) {
-            return const MainView();
-          } else {
-            return const WelcomeView();
-          }
-        }));
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'Club Management',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      routerConfig: appRouter,
+    );
   }
 }

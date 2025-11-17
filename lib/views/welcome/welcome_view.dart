@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/login/login_view.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/authentication/login/login_view.dart';
 // import 'package:icd0018_hybridmobile_club_managment/views/register/register_view.dart'; // добавишь позже
 
 class WelcomeView extends StatelessWidget {
