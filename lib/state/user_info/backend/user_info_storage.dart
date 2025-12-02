@@ -1,5 +1,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/constants/firebase_collection_name.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/constants/firebase_field_name.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/user_info/dto/user_info_payload.dart';
@@ -10,34 +11,27 @@ class UserInfoStorage {
 
   Future<bool> saveUserInfo({
     required UserId userId,
-    required String displayName,
+    required String name,
     required String? email,
   }) async {
     try {
-      var userInfo = await FirebaseFirestore.instance
-          .collection(FirebaseCollectionName.users)
-          .where(FirebaseFieldName.userId, isEqualTo: userId)
-          .limit(1)
-          .get();
-
-      if (userInfo.docs.isNotEmpty) {
-        // we already have this user's profile, save the new data instead
-        await userInfo.docs.first.reference.update({
-          FirebaseFieldName.displayName: displayName,
-          FirebaseFieldName.email: email ?? '',
-        });
-        return true;
-      }
-
       final payload = UserInfoPayload(
-          userId: userId, displayName: displayName, email: email);
+        userId: userId,
+        name: name,
+        email: email,
+      );
 
       await FirebaseFirestore.instance
           .collection(FirebaseCollectionName.users)
-          .add(payload);
+          .doc(userId)
+          .set(payload, SetOptions(merge: true));
 
       return true;
-    } catch (_) {
+    } on FirebaseException catch (e) {
+      debugPrint('Failed to save user info (code: ${e.code}): ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('Failed to save user info: $e');
       return false;
     }
   }

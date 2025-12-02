@@ -8,12 +8,12 @@ import 'package:icd0018_hybridmobile_club_managment/typedef/user_id.dart';
 class UserInfoPayload extends MapView<String, String> {
   UserInfoPayload({
     required UserId userId,
-    required String? displayName,
+    required String? name,
     required String? email,
   }) : super(
     {
       FirebaseFieldName.userId: userId,
-      FirebaseFieldName.displayName: displayName ?? '',
+      FirebaseFieldName.name: name ?? '',
       FirebaseFieldName.email: email ?? '',
     },
   );

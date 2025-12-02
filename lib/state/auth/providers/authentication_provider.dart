@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/user_info/backend/user_info_storage.dart';
@@ -93,17 +94,23 @@ class Authentication extends _$Authentication {
       password: password,
     );
 
-    final userId = _authenticator.userId;
     var nextResult = result;
+    UserId? userId;
 
-    if (result == AuthResult.success && userId != null) {
-      final didSave = await _saveUserInfo(
-        userId: userId,
-        name: name,
-        email: email,
-      );
+    if (result == AuthResult.success) {
+      userId = FirebaseAuth.instance.currentUser?.uid ?? _authenticator.userId;
 
-      if (!didSave) {
+      if (userId != null) {
+        final didSave = await _saveUserInfo(
+          userId: userId,
+          name: name,
+          email: email,
+        );
+
+        if (!didSave) {
+          nextResult = AuthResult.failure;
+        }
+      } else {
         nextResult = AuthResult.failure;
       }
     }
@@ -124,7 +131,7 @@ class Authentication extends _$Authentication {
   }) {
     return _userInfoStorage.saveUserInfo(
       userId: userId,
-      displayName: name,
+      name: name,
       email: email,
     );
   }

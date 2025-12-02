@@ -8,7 +8,7 @@ class GoogleAuth {
   const GoogleAuth(this._firebaseAuth, this._googleSignIn);
 
   final FirebaseAuth _firebaseAuth;
-  final GoogleSignIn _googleSignIn;
+  final GoogleSignIn? _googleSignIn;
 
   Future<AuthResult> loginWithGoogle() async {
     try {
@@ -18,7 +18,8 @@ class GoogleAuth {
         return AuthResult.success;
       }
 
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser =
+          await (_googleSignIn ?? GoogleSignIn()).signIn();
       if (googleUser == null) {
         return AuthResult.aborted;
       }
@@ -39,6 +40,6 @@ class GoogleAuth {
   }
 
   Future<void> logOut() async {
-    await _googleSignIn.signOut();
+    await _googleSignIn?.signOut();
   }
 }

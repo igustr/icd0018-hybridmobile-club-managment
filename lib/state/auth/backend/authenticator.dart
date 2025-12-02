@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
@@ -14,7 +15,7 @@ class Authenticator {
       _emailAuth = EmailAuth(firebaseAuth ?? FirebaseAuth.instance),
       _googleAuth = GoogleAuth(
         firebaseAuth ?? FirebaseAuth.instance,
-        googleSignIn ?? GoogleSignIn(),
+        kIsWeb ? null : (googleSignIn ?? GoogleSignIn()),
       ),
       _appleAuth = AppleAuth(firebaseAuth ?? FirebaseAuth.instance);
 
