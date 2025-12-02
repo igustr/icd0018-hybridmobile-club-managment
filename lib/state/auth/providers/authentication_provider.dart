@@ -1,5 +1,7 @@
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/user_info/backend/user_info_storage.dart';
+import 'package:icd0018_hybridmobile_club_managment/typedef/user_id.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../backend/authenticator.dart';
@@ -9,6 +11,7 @@ part 'authentication_provider.g.dart';
 @riverpod
 class Authentication extends _$Authentication {
   final Authenticator _authenticator = Authenticator();
+  final _userInfoStorage = const UserInfoStorage();
 
   @override
   AuthState build() {
@@ -90,14 +93,39 @@ class Authentication extends _$Authentication {
       password: password,
     );
 
-    // TODO: Save user info to database (Firestore or your backend)
+    final userId = _authenticator.userId;
+    var nextResult = result;
+
+    if (result == AuthResult.success && userId != null) {
+      final didSave = await _saveUserInfo(
+        userId: userId,
+        name: name,
+        email: email,
+      );
+
+      if (!didSave) {
+        nextResult = AuthResult.failure;
+      }
+    }
 
     state = AuthState(
-      result: result,
+      result: nextResult,
       isLoading: false,
-      userId: _authenticator.userId,
+      userId: userId,
     );
 
-    return result;
+    return nextResult;
+  }
+
+  Future<bool> _saveUserInfo({
+    required UserId userId,
+    required String name,
+    required String email,
+  }) {
+    return _userInfoStorage.saveUserInfo(
+      userId: userId,
+      displayName: name,
+      email: email,
+    );
   }
 }

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/welcome/welcome_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/authentication/register/register_view.dart';
 import '../views/authentication/login/login_view.dart';
-import '../views/home/home.dart';
+import '../views/home/home_view.dart';
 
 
 final GoRouter appRouter = GoRouter(
