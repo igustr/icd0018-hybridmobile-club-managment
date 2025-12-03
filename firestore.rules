@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUser() {
+      return signedIn() && userDoc().exists;
+    }
+
+    function userRole() {
+      return hasUser() ? userDoc().data.role : null;
+    }
+
+    function isCoach() {
+      return userRole() == "coach";
+    }
+
+    function isPlayer() {
+      return userRole() == "player";
+    }
+
+    function teamIds() {
+      return hasUser() && userDoc().data.teamIds is list
+        ? userDoc().data.teamIds
+        : [];
+    }
+
+    function belongsToTeam(teamId) {
+      return teamId != null && teamId in teamIds();
+    }
+
+    function eventDoc(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId));
+    }
+
+    function eventOnUserTeam(eventId) {
+      let ev = eventDoc(eventId);
+      return ev.exists && belongsToTeam(ev.data.teamId);
+    }
+
+    // Users: role immutable from client; only create as player
+    match /users/{userId} {
+      allow create: if signedIn()
+        && userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.role == "player";
+
+      allow read, update: if signedIn()
+        && userId == request.auth.uid
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    // Clubs: only coaches can create/update; no embedded owner field
+    match /clubs/{clubId} {
+      allow read: if signedIn();
+      allow create: if isCoach();
+      allow update: if isCoach();
+      allow delete: if false;
+    }
+
+    // Teams: coach-owned; visible to coaches or members
+    match /teams/{teamId} {
+      allow read: if signedIn() && (isCoach() || belongsToTeam(teamId));
+      allow create: if isCoach()
+        && request.resource.data.coachId == request.auth.uid;
+      allow update: if isCoach()
+        && resource.data.coachId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Events: readable by team members (players see all types); coach-managed for their teams
+    match /events/{eventId} {
+      allow read: if signedIn()
+        && belongsToTeam(resource.data.teamId);
+      allow create: if isCoach()
+        && belongsToTeam(request.resource.data.teamId)
+        && request.resource.data.createdByUserId == request.auth.uid;
+      allow update, delete: if isCoach()
+        && belongsToTeam(resource.data.teamId)
+        && resource.data.createdByUserId == request.auth.uid;
+    }
+
+    // Attendance: players manage own status; coaches manage their team’s events
+    match /attendance/{attendanceId} {
+      allow read: if signedIn() && (
+        (isPlayer()
+          && resource.data.playerId == request.auth.uid
+          && eventOnUserTeam(resource.data.eventId))
+        ||
+        (isCoach() && eventOnUserTeam(resource.data.eventId))
+      );
+
+      allow create, update: if signedIn() && (
+        (isPlayer()
+          && request.resource.data.playerId == request.auth.uid
+          && eventOnUserTeam(request.resource.data.eventId))
+        ||
+        (isCoach() && eventOnUserTeam(request.resource.data.eventId))
+      );
+
+      allow delete: if false;
+    }
+  }
+}

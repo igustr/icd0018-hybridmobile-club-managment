@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:icd0018_hybridmobile_club_managment/state/user_info/providers/user_display_name_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/users/providers/user_display_name_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/schedule/schedule_view.dart';
 
 class HomeView extends ConsumerStatefulWidget {
   const HomeView({super.key});
@@ -24,10 +25,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const _HomeContent(),
-      const _PlaceholderPage(
-        title: 'Schedule',
-        subtitle: 'Plan will live here. Coming soon.',
-      ),
+      const ScheduleView(),
       const _PlaceholderPage(
         title: 'Team Overview',
         subtitle: 'Roster, roles and stats will be shown here.',

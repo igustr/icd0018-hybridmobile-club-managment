@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_result.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/auth/models/auth_state.dart';
-import 'package:icd0018_hybridmobile_club_managment/state/user_info/backend/user_info_storage.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/users/backend/user_storage.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/users/dto/user_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/typedef/user_id.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -12,7 +13,7 @@ part 'authentication_provider.g.dart';
 @riverpod
 class Authentication extends _$Authentication {
   final Authenticator _authenticator = Authenticator();
-  final _userInfoStorage = const UserInfoStorage();
+  final _userStorage = const UserStorage();
 
   @override
   AuthState build() {
@@ -38,6 +39,10 @@ class Authentication extends _$Authentication {
       password,
     );
 
+    if (result == AuthResult.success) {
+      await _ensureUserDocument();
+    }
+
     state = AuthState(
       result: result,
       isLoading: false,
@@ -52,6 +57,10 @@ class Authentication extends _$Authentication {
 
     final result = await _authenticator.loginWithGoogle();
 
+    if (result == AuthResult.success) {
+      await _ensureUserDocument();
+    }
+
     state = AuthState(
       result: result,
       isLoading: false,
@@ -65,6 +74,10 @@ class Authentication extends _$Authentication {
     state = state.copyWith(isLoading: true);
 
     final result = await _authenticator.loginWithApple();
+
+    if (result == AuthResult.success) {
+      await _ensureUserDocument();
+    }
 
     state = AuthState(
       result: result,
@@ -129,10 +142,38 @@ class Authentication extends _$Authentication {
     required String displayName,
     required String email,
   }) {
-    return _userInfoStorage.saveUserInfo(
+    final dto = UserDto(
       userId: userId,
       displayName: displayName,
       email: email,
+      role: 'player',
     );
+
+    return _userStorage
+        .createUser(dto)
+        .then((_) => true)
+        .catchError((_) => false);
+  }
+
+  Future<void> _ensureUserDocument() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+    if (uid == null) {
+      return;
+    }
+
+    final existing = await _userStorage.fetchUser(uid);
+    if (existing != null) {
+      return;
+    }
+
+    final dto = UserDto(
+      userId: uid,
+      displayName: user?.displayName ?? '',
+      email: user?.email,
+      role: 'player',
+    );
+
+    await _userStorage.createUser(dto);
   }
 }
