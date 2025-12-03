@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/user_info/providers/user_display_name_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 
@@ -88,12 +89,19 @@ class _HomeViewState extends ConsumerState<HomeView> {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends ConsumerWidget {
   const _HomeContent();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final displayNameAsync = ref.watch(userDisplayNameProvider);
+    final greeting = displayNameAsync.when(
+      data: (name) =>
+          name != null && name.trim().isNotEmpty ? 'Welcome, ${name.trim()}' : 'Welcome',
+      loading: () => 'Welcome',
+      error: (_, __) => 'Welcome',
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -101,16 +109,16 @@ class _HomeContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Good afternoon,',
-            style: textTheme.titleSmall?.copyWith(color: Colors.grey[600]),
+            greeting,
+            style: textTheme.titleMedium?.copyWith(
+              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Welcome back to the club hub',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            'Here\'s what is happening across your teams',
+            style: textTheme.titleSmall?.copyWith(color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
           _highlightCard(),

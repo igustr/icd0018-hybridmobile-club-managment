@@ -103,7 +103,7 @@ class Authentication extends _$Authentication {
       if (userId != null) {
         final didSave = await _saveUserInfo(
           userId: userId,
-          name: name,
+          displayName: name,
           email: email,
         );
 
@@ -126,12 +126,12 @@ class Authentication extends _$Authentication {
 
   Future<bool> _saveUserInfo({
     required UserId userId,
-    required String name,
+    required String displayName,
     required String email,
   }) {
     return _userInfoStorage.saveUserInfo(
       userId: userId,
-      name: name,
+      displayName: displayName,
       email: email,
     );
   }
