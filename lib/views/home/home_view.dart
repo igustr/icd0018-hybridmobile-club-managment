@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 
 class HomeView extends ConsumerStatefulWidget {
@@ -290,33 +291,16 @@ class _PlaceholderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.hourglass_empty_rounded,
-              size: 56,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '$title page is coming soon',
-              style: textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: ClubAnimation(
+          type: ClubAnimationType.empty,
+          title: '$title page is coming soon',
+          subtitle: subtitle,
+          size: 200,
+          repeat: true,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
         ),
       ),
     );
