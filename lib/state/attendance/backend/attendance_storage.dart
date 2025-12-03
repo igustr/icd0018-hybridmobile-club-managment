@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/attendance/dto/attendance_dto.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/attendance/mapper/attendance_mapper.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/constants/firebase_collection_name.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/constants/firebase_field_name.dart';
 
@@ -12,7 +13,7 @@ class AttendanceStorage {
 
   Future<void> setAttendance(AttendanceDto attendance) {
     return _collection.doc(attendance.attendanceId).set(
-          attendance.toCreateMap(),
+          AttendanceMapper.toCreateMap(attendance),
           SetOptions(merge: true),
         );
   }
@@ -21,7 +22,7 @@ class AttendanceStorage {
     try {
       final doc = await _collection.doc(attendanceId).get();
       if (!doc.exists) return null;
-      return AttendanceDto.fromDocument(doc);
+      return AttendanceMapper.fromDocument(doc);
     } on FirebaseException catch (e) {
       debugPrint('Failed to fetch attendance $attendanceId: ${e.message}');
       return null;
@@ -31,7 +32,7 @@ class AttendanceStorage {
   Stream<AttendanceDto?> watchAttendance(String attendanceId) {
     return _collection.doc(attendanceId).snapshots().map((doc) {
       if (!doc.exists) return null;
-      return AttendanceDto.fromDocument(doc);
+      return AttendanceMapper.fromDocument(doc);
     });
   }
 
@@ -40,6 +41,6 @@ class AttendanceStorage {
         .where(FirebaseFieldName.eventId, isEqualTo: eventId)
         .snapshots()
         .map((snapshot) =>
-            snapshot.docs.map(AttendanceDto.fromDocument).toList());
+            snapshot.docs.map(AttendanceMapper.fromDocument).toList());
   }
 }

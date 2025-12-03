@@ -163,7 +163,7 @@ class _EventCard extends StatelessWidget {
                 teamId: event.teamId,
                 clubId: '',
                 name: 'Team ${event.teamId}',
-                coachId: '',
+                coachIds: const [],
               ),
             )
             .name;
@@ -511,7 +511,6 @@ class _CreateEventFormState extends State<_CreateEventForm> {
       location: locationText.isNotEmpty ? locationText : null,
       note: noteText.isNotEmpty ? noteText : null,
       createdByUserId: widget.user.userId,
-      createdAt: DateTime.now(),
     );
 
     try {

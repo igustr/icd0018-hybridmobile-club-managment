@@ -13,7 +13,8 @@ class FirebaseFieldName {
   static const teamId = 'teamId';
   static const name = 'name';
   static const ageGroup = 'ageGroup';
-  static const coachId = 'coachId';
+  static const coachId = 'coachId'; // legacy
+  static const coachIds = 'coachIds';
   static const playerIds = 'playerIds';
   static const eventId = 'eventId';
   static const type = 'type';

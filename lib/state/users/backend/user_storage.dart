@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/constants/firebase_collection_name.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/dto/user_dto.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/users/mapper/user_mapper.dart';
 
 class UserStorage {
   const UserStorage();
@@ -13,14 +14,14 @@ class UserStorage {
 
   Future<void> createUser(UserDto user) {
     return _collection.doc(user.userId).set(
-          user.toCreateMap(),
+          UserMapper.toCreateMap(user),
           SetOptions(merge: true),
         );
   }
 
   Future<void> updateUser(UserDto user) {
     return _collection.doc(user.userId).set(
-          user.toUpdateMap(),
+          UserMapper.toUpdateMap(user),
           SetOptions(merge: true),
         );
   }
@@ -31,7 +32,7 @@ class UserStorage {
       if (!doc.exists) {
         return null;
       }
-      return UserDto.fromDocument(doc);
+      return UserMapper.fromDocument(doc);
     } on FirebaseException catch (e) {
       debugPrint('Failed to fetch user $userId: ${e.message}');
       return null;
@@ -41,7 +42,7 @@ class UserStorage {
   Stream<UserDto?> watchUser(String userId) {
     return _collection.doc(userId).snapshots().map((doc) {
       if (!doc.exists) return null;
-      return UserDto.fromDocument(doc);
+      return UserMapper.fromDocument(doc);
     });
   }
 }
