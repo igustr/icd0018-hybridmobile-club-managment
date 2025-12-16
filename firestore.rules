@@ -15,7 +15,9 @@ service cloud.firestore {
     }
 
     function userRole() {
-      return hasUser() ? userDoc().data.role : null;
+      return hasUser() && userDoc().data.role is string
+        ? userDoc().data.role.lower().trim()
+        : null;
     }
 
     function isCoach() {
@@ -26,14 +28,39 @@ service cloud.firestore {
       return userRole() == "player";
     }
 
-    function teamIds() {
-      return hasUser() && userDoc().data.teamIds is list
-        ? userDoc().data.teamIds
+    function userTeamIds() {
+      return hasUser()
+        ? (
+          userDoc().data.teamIds is list
+            ? userDoc().data.teamIds
+            : userDoc().data.teamIds is string
+              ? [userDoc().data.teamIds]
+              : userDoc().data.teamIds is map
+                ? userDoc().data.teamIds.keys()
+                : []
+        )
         : [];
     }
 
     function belongsToTeam(teamId) {
-      return teamId != null && teamId in teamIds();
+      return teamId != null
+        && teamId in userTeamIds();
+    }
+
+    function isCoachOfTeam(teamId) {
+      return isCoach()
+        && teamId != null
+        && get(/databases/$(database)/documents/teams/$(teamId)).exists
+        && (
+          (
+            get(/databases/$(database)/documents/teams/$(teamId)).data.coachIds is list
+            && request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.coachIds
+          )
+          || (
+            get(/databases/$(database)/documents/teams/$(teamId)).data.coachId is string
+            && get(/databases/$(database)/documents/teams/$(teamId)).data.coachId == request.auth.uid
+          )
+        );
     }
 
     function eventDoc(eventId) {
@@ -41,8 +68,8 @@ service cloud.firestore {
     }
 
     function eventOnUserTeam(eventId) {
-      let ev = eventDoc(eventId);
-      return ev.exists && belongsToTeam(ev.data.teamId);
+      return eventDoc(eventId).exists
+        && (belongsToTeam(eventDoc(eventId).data.teamId) || isCoachOfTeam(eventDoc(eventId).data.teamId));
     }
 
     // Users: role immutable from client; only create as player
@@ -52,7 +79,10 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.role == "player";
 
-      allow read, update: if signedIn()
+      allow read: if signedIn()
+        && userId == request.auth.uid;
+
+      allow update: if signedIn()
         && userId == request.auth.uid
         && request.resource.data.role == resource.data.role;
 
@@ -67,9 +97,9 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Teams: coach-owned; visible to coaches or members
+    // Teams: visible to any signed-in user (used for lookups), write still restricted to coaches
     match /teams/{teamId} {
-      allow read: if signedIn() && (isCoach() || belongsToTeam(teamId));
+      allow read: if signedIn();
       allow create: if isCoach()
         && request.resource.data.coachIds is list
         && request.auth.uid in request.resource.data.coachIds;
@@ -81,13 +111,11 @@ service cloud.firestore {
 
     // Events: readable by team members (players see all types); coach-managed for their teams
     match /events/{eventId} {
-      allow read: if signedIn()
-        && belongsToTeam(resource.data.teamId);
+      allow read: if signedIn();
       allow create: if isCoach()
-        && belongsToTeam(request.resource.data.teamId)
         && request.resource.data.createdByUserId == request.auth.uid;
       allow update, delete: if isCoach()
-        && belongsToTeam(resource.data.teamId)
+        && (belongsToTeam(resource.data.teamId) || isCoachOfTeam(resource.data.teamId))
         && resource.data.createdByUserId == request.auth.uid;
     }
 

@@ -29,7 +29,7 @@ class ScheduleView extends ConsumerWidget {
           return const Center(child: Text('Sign in to see your schedule.'));
         }
 
-        final isCoach = user.role.toLowerCase() == 'coach';
+        final isCoach = _isCoach(user);
 
         return Stack(
           children: [
@@ -45,27 +45,29 @@ class ScheduleView extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Schedule',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isCoach
-                                ? 'Manage matches and trainings'
-                                : 'Upcoming events for your teams',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(color: Colors.grey[700]),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Schedule',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isCoach
+                                  ? 'Manage matches and trainings'
+                                  : 'Upcoming events for your teams',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: Colors.grey[700]),
+                            ),
+                          ],
+                        ),
                       ),
                       if (isCoach)
                         _AddEventButton(
@@ -83,10 +85,12 @@ class ScheduleView extends ConsumerWidget {
                       }
                       return Column(
                         children: events
-                            .map((event) => _EventCard(
-                                  event: event,
-                                  teamLookup: teamsAsync.value ?? const [],
-                                ))
+                            .map(
+                              (event) => _EventCard(
+                                event: event,
+                                teamLookup: teamsAsync.valueOrNull ?? const [],
+                              ),
+                            )
                             .toList(),
                       );
                     },
@@ -125,7 +129,54 @@ class _AddEventButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLoadingTeams = teamsAsync.isLoading;
-    final teams = teamsAsync.value ?? const <TeamDto>[];
+    final teams = teamsAsync.valueOrNull ?? const <TeamDto>[];
+    final hasTeamsError = teamsAsync.hasError;
+
+    void onPressed() {
+      if (!_isCoach(user)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Only coaches can create events.'),
+          ),
+        );
+        return;
+      }
+
+      if (isLoadingTeams) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Loading your teams, please try again in a moment.'),
+          ),
+        );
+        return;
+      }
+
+      if (hasTeamsError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load teams right now.'),
+          ),
+        );
+        return;
+      }
+
+      if (teams.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Add a team before creating an event.'),
+          ),
+        );
+        return;
+      }
+
+      _showCreateEventSheet(
+        context,
+        user,
+        teams,
+        clubsAsync.valueOrNull ?? const {},
+      );
+    }
+
     return ElevatedButton.icon(
       icon: const Icon(Icons.add),
       label: const Text('New event'),
@@ -133,14 +184,7 @@ class _AddEventButton extends StatelessWidget {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
       ),
-      onPressed: isLoadingTeams || teams.isEmpty
-          ? null
-          : () => _showCreateEventSheet(
-                context,
-                user,
-                teams,
-                clubsAsync.value ?? const {},
-              ),
+      onPressed: onPressed,
     );
   }
 }
@@ -254,18 +298,27 @@ class _EmptySchedule extends StatelessWidget {
             color: Colors.grey[400],
           ),
           const SizedBox(height: 12),
-          Text(
-            isCoach
-                ? 'No events yet. Add your first training or match.'
-                : 'No upcoming trainings yet.',
-            style: TextStyle(color: Colors.grey[700]),
+          const Text(
+            'There are no upcoming events.',
+            style: TextStyle(color: Colors.grey),
             textAlign: TextAlign.center,
           ),
+          if (isCoach) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Use Add event to schedule the next training or match.',
+              style: TextStyle(color: Colors.grey[700]),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
   }
 }
+
+bool _isCoach(UserDto user) =>
+    user.role.trim().toLowerCase() == 'coach';
 
 Future<void> _showCreateEventSheet(
   BuildContext context,
@@ -273,6 +326,15 @@ Future<void> _showCreateEventSheet(
   List<TeamDto> teams,
   Map<String, ClubDto> clubs,
 ) async {
+  if (!_isCoach(user)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Only coaches can create events.'),
+      ),
+    );
+    return;
+  }
+
   if (teams.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

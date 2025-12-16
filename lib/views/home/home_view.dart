@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/user_display_name_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/teams/providers/teams_for_user_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/teams/dto/team_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/schedule/schedule_view.dart';
@@ -94,6 +96,7 @@ class _HomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     final displayNameAsync = ref.watch(userDisplayNameProvider);
+    final teamsAsync = ref.watch(teamsForCurrentUserProvider);
     final greeting = displayNameAsync.when(
       data: (name) =>
           name != null && name.trim().isNotEmpty ? 'Welcome, ${name.trim()}' : 'Welcome',
@@ -118,6 +121,8 @@ class _HomeContent extends ConsumerWidget {
             'Here\'s what is happening across your teams',
             style: textTheme.titleSmall?.copyWith(color: Colors.grey[600]),
           ),
+          const SizedBox(height: 24),
+          _teamBadges(teamsAsync),
           const SizedBox(height: 24),
           _highlightCard(),
           const SizedBox(height: 24),
@@ -282,6 +287,41 @@ class _HomeContent extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _teamBadges(AsyncValue<List<TeamDto>> teamsAsync) {
+    return teamsAsync.when(
+      data: (teams) {
+        if (teams.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: teams
+              .map(
+                (team) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightBlue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.lightBlue),
+                  ),
+                  child: Text(
+                    team.name,
+                    style: const TextStyle(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
