@@ -45,4 +45,14 @@ class UserStorage {
       return UserMapper.fromDocument(doc);
     });
   }
+
+  Future<List<UserDto>> fetchUsersByIds(List<String> userIds) async {
+    if (userIds.isEmpty) return const [];
+    final futures = userIds.map((id) => _collection.doc(id).get());
+    final snapshots = await Future.wait(futures);
+    return snapshots
+        .where((doc) => doc.exists)
+        .map((doc) => UserMapper.fromDocument(doc))
+        .toList();
+  }
 }

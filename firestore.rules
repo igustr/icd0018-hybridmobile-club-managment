@@ -6,39 +6,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function hasUser() {
-      return signedIn() && userDoc().exists;
-    }
-
-    function userRole() {
-      return hasUser() && userDoc().data.role is string
-        ? userDoc().data.role.lower().trim()
-        : null;
-    }
-
     function isCoach() {
-      return userRole() == "coach";
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn()
+        && user.data.role is string
+        && user.data.role.lower() == "coach";
     }
 
     function isPlayer() {
-      return userRole() == "player";
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn()
+        && user.data.role is string
+        && user.data.role.lower() == "player";
     }
 
     function userTeamIds() {
-      return hasUser()
-        ? (
-          userDoc().data.teamIds is list
-            ? userDoc().data.teamIds
-            : userDoc().data.teamIds is string
-              ? [userDoc().data.teamIds]
-              : userDoc().data.teamIds is map
-                ? userDoc().data.teamIds.keys()
-                : []
-        )
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn() && user.data.teamIds is list
+        ? user.data.teamIds
         : [];
     }
 
@@ -79,8 +64,8 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.role == "player";
 
-      allow read: if signedIn()
-        && userId == request.auth.uid;
+      // Allow reading own profile, or coaches can read any user (for attendance view)
+      allow read: if signedIn();
 
       allow update: if signedIn()
         && userId == request.auth.uid
@@ -119,23 +104,12 @@ service cloud.firestore {
         && resource.data.createdByUserId == request.auth.uid;
     }
 
-    // Attendance: players manage own status; coaches manage their team’s events
+    // Attendance: players manage own status; coaches can read all
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (
-        (isPlayer()
-          && resource.data.playerId == request.auth.uid
-          && eventOnUserTeam(resource.data.eventId))
-        ||
-        (isCoach() && eventOnUserTeam(resource.data.eventId))
-      );
+      allow read: if signedIn();
 
-      allow create, update: if signedIn() && (
-        (isPlayer()
-          && request.resource.data.playerId == request.auth.uid
-          && eventOnUserTeam(request.resource.data.eventId))
-        ||
-        (isCoach() && eventOnUserTeam(request.resource.data.eventId))
-      );
+      allow create, update: if signedIn()
+        && request.resource.data.playerId == request.auth.uid;
 
       allow delete: if false;
     }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/attendance/attendance_status.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/attendance/backend/attendance_storage.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/attendance/dto/attendance_dto.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/attendance/providers/attendance_providers.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/clubs/providers/clubs_for_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/events/backend/event_storage.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/events/dto/event_dto.dart';
@@ -9,6 +13,7 @@ import 'package:icd0018_hybridmobile_club_managment/state/teams/dto/team_dto.dar
 import 'package:icd0018_hybridmobile_club_managment/state/teams/providers/teams_for_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/dto/user_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/current_user_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/attendance/event_attendance_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 
 class ScheduleView extends ConsumerWidget {
@@ -89,6 +94,7 @@ class ScheduleView extends ConsumerWidget {
                               (event) => _EventCard(
                                 event: event,
                                 teamLookup: teamsAsync.valueOrNull ?? const [],
+                                user: user,
                               ),
                             )
                             .toList(),
@@ -189,93 +195,294 @@ class _AddEventButton extends StatelessWidget {
   }
 }
 
-class _EventCard extends StatelessWidget {
+class _EventCard extends ConsumerStatefulWidget {
   const _EventCard({
     required this.event,
     required this.teamLookup,
+    required this.user,
   });
 
   final EventDto event;
   final List<TeamDto> teamLookup;
+  final UserDto user;
+
+  @override
+  ConsumerState<_EventCard> createState() => _EventCardState();
+}
+
+class _EventCardState extends ConsumerState<_EventCard> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final teamName = teamLookup
-            .firstWhere(
-              (team) => team.teamId == event.teamId,
-              orElse: () => TeamDto(
-                teamId: event.teamId,
-                clubId: '',
-                name: 'Team ${event.teamId}',
-                coachIds: const [],
-              ),
-            )
-            .name;
+    final isCoach = _isCoach(widget.user);
+    final team = widget.teamLookup.firstWhere(
+      (team) => team.teamId == widget.event.teamId,
+      orElse: () => TeamDto(
+        teamId: widget.event.teamId,
+        clubId: '',
+        name: 'Team ${widget.event.teamId}',
+        coachIds: const [],
+      ),
+    );
+    final teamName = team.name;
 
     final subtitle = _formatDateRange(
       context,
-      event.startTime,
-      event.endTime,
+      widget.event.startTime,
+      widget.event.endTime,
     );
 
-    final safeType = event.type.isNotEmpty ? event.type : 'event';
+    final safeType = widget.event.type.isNotEmpty ? widget.event.type : 'event';
     final isTraining = safeType.toLowerCase() == 'training';
     final title = safeType[0].toUpperCase() + safeType.substring(1);
 
+    final attendanceAsync = ref.watch(userAttendanceForEventProvider(widget.event.eventId));
+    final currentAttendance = attendanceAsync.valueOrNull;
+    final currentStatus = AttendanceStatusExtension.fromString(currentAttendance?.status);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+      child: InkWell(
+        onTap: () {
+          if (isCoach) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => EventAttendanceView(
+                  event: widget.event,
+                  team: team,
+                ),
+              ),
+            );
+          } else {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
           children: [
-            CircleAvatar(
-              backgroundColor:
-                  isTraining ? AppColors.lightBlue : AppColors.skyBlue,
-              foregroundColor: AppColors.primaryBlue,
-              child: Icon(isTraining ? Icons.fitness_center : Icons.sports_soccer),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                  CircleAvatar(
+                    backgroundColor:
+                        isTraining ? AppColors.lightBlue : AppColors.skyBlue,
+                    foregroundColor: AppColors.primaryBlue,
+                    child: Icon(isTraining ? Icons.fitness_center : Icons.sports_soccer),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          teamName,
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        if ((widget.event.location ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.place, size: 16, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  widget.event.location ?? '',
+                                  style: TextStyle(color: Colors.grey[700]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    teamName,
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  if ((event.location ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
+                  if (!isCoach)
+                    Icon(
+                      currentStatus?.icon ?? Icons.help_outline,
+                      color: currentStatus?.color ?? Colors.grey,
+                    ),
+                  if (isCoach)
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+            ),
+            if (!isCoach && _isExpanded)
+              _AttendanceOptions(
+                event: widget.event,
+                user: widget.user,
+                currentStatus: currentStatus,
+                onSelected: () {
+                  setState(() {
+                    _isExpanded = false;
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceOptions extends StatelessWidget {
+  const _AttendanceOptions({
+    required this.event,
+    required this.user,
+    required this.currentStatus,
+    required this.onSelected,
+  });
+
+  final EventDto event;
+  final UserDto user;
+  final AttendanceStatus? currentStatus;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(12),
+          bottomRight: Radius.circular(12),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: AttendanceStatus.values.map((status) {
+          final isSelected = currentStatus == status;
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Material(
+                color: isSelected ? status.color.withValues(alpha: 0.2) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  onTap: () => _onStatusSelected(context, status),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.place, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            event.location ?? '',
-                            style: TextStyle(color: Colors.grey[700]),
+                        Icon(
+                          status.icon,
+                          color: status.color,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          status.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: status.color,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ],
+                  ),
+                ),
               ),
             ),
-          ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _onStatusSelected(BuildContext context, AttendanceStatus status) async {
+    String? reason;
+
+    if (status.requiresReason) {
+      reason = await _showReasonDialog(context, status);
+      if (reason == null) return;
+    }
+
+    final attendanceId = '${event.eventId}_${user.userId}';
+    final attendance = AttendanceDto(
+      attendanceId: attendanceId,
+      eventId: event.eventId,
+      playerId: user.userId,
+      status: status.value,
+      message: status == AttendanceStatus.coming ? null : reason,
+    );
+
+    try {
+      await const AttendanceStorage().setAttendance(attendance);
+      onSelected();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Attendance set to ${status.label}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save attendance: $e')),
+        );
+      }
+    }
+  }
+
+  Future<String?> _showReasonDialog(BuildContext context, AttendanceStatus status) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${status.label} - Add reason'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Enter reason',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+            autofocus: true,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter a reason';
+              }
+              return null;
+            },
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(context).pop(controller.text.trim());
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }
