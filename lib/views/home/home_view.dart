@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/chat/providers/unread_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/user_display_name_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/teams/providers/teams_for_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/teams/dto/team_dto.dart';
-import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/chat/chat_list_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/schedule/schedule_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/team/team_view.dart';
@@ -30,10 +31,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       const _HomeContent(),
       const ScheduleView(),
       const TeamView(),
-      const _PlaceholderPage(
-        title: 'Chat',
-        subtitle: 'Conversations will be available soon.',
-      ),
+      const ChatListView(),
     ];
 
     final titles = ['Home', 'Schedule', 'Team', 'Chat'];
@@ -58,31 +56,58 @@ class _HomeViewState extends ConsumerState<HomeView> {
           children: pages,
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
+      bottomNavigationBar: _BottomNav(
+        selectedIndex: _selectedIndex,
         onTap: _onNavTap,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primaryBlue,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.schedule_rounded),
-            label: 'Schedule',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.groups_rounded),
-            label: 'Team',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_rounded),
-            label: 'Chat',
-          ),
-        ],
       ),
+    );
+  }
+}
+
+class _BottomNav extends ConsumerWidget {
+  const _BottomNav({
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(totalUnreadCountProvider);
+
+    return BottomNavigationBar(
+      currentIndex: selectedIndex,
+      onTap: onTap,
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: AppColors.primaryBlue,
+      unselectedItemColor: Colors.grey,
+      items: [
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.home_rounded),
+          label: 'Home',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.schedule_rounded),
+          label: 'Schedule',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.groups_rounded),
+          label: 'Team',
+        ),
+        BottomNavigationBarItem(
+          icon: Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text(
+              unreadCount > 99 ? '99+' : '$unreadCount',
+              style: const TextStyle(fontSize: 10),
+            ),
+            child: const Icon(Icons.chat_bubble_rounded),
+          ),
+          label: 'Chat',
+        ),
+      ],
     );
   }
 }
@@ -320,33 +345,6 @@ class _HomeContent extends ConsumerWidget {
       },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _PlaceholderPage({
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ClubAnimation(
-          type: ClubAnimationType.empty,
-          title: '$title page is coming soon',
-          subtitle: subtitle,
-          size: 200,
-          repeat: true,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-        ),
-      ),
     );
   }
 }

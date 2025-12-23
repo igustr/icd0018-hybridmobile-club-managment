@@ -7,6 +7,8 @@ class FirebaseCollectionName {
   static const teams = 'teams';
   static const events = 'events';
   static const attendance = 'attendance';
+  static const conversations = 'conversations';
+  static const messages = 'messages';
 
   const FirebaseCollectionName._();
 }

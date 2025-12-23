@@ -28,5 +28,17 @@ class FirebaseFieldName {
   static const status = 'status';
   static const message = 'message';
 
+  // Chat
+  static const conversationId = 'conversationId';
+  static const messageId = 'messageId';
+  static const senderId = 'senderId';
+  static const text = 'text';
+  static const participantIds = 'participantIds';
+  static const lastMessageText = 'lastMessageText';
+  static const lastMessageTime = 'lastMessageTime';
+  static const lastMessageSenderId = 'lastMessageSenderId';
+  static const count = 'count';
+  static const lastReadAt = 'lastReadAt';
+
   const FirebaseFieldName._();
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/chat/backend/conversation_storage.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/teams/backend/team_storage.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/teams/dto/team_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/teams/providers/teams_for_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/backend/user_storage.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/dto/user_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/current_user_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/chat/conversation_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/team/add_member_view.dart';
 
@@ -271,6 +273,7 @@ class _RosterListState extends State<_RosterList> {
                     isCoachMember: true,
                     team: widget.team,
                     onChanged: _refreshTeams,
+                    ref: widget.ref,
                   )),
               const SizedBox(height: 24),
             ],
@@ -285,6 +288,7 @@ class _RosterListState extends State<_RosterList> {
                     isCoachMember: false,
                     team: widget.team,
                     onChanged: _refreshTeams,
+                    ref: widget.ref,
                   )),
             ],
           ],
@@ -410,6 +414,7 @@ class _MemberCard extends StatefulWidget {
     required this.isCoachMember,
     required this.team,
     required this.onChanged,
+    required this.ref,
   });
 
   final UserDto user;
@@ -419,6 +424,7 @@ class _MemberCard extends StatefulWidget {
   final bool isCoachMember;
   final TeamDto team;
   final VoidCallback onChanged;
+  final WidgetRef ref;
 
   @override
   State<_MemberCard> createState() => _MemberCardState();
@@ -427,6 +433,48 @@ class _MemberCard extends StatefulWidget {
 class _MemberCardState extends State<_MemberCard> {
   bool _isExpanded = false;
   bool _isLoading = false;
+
+  Future<void> _startChat() async {
+    final currentUser = widget.ref.read(currentUserProvider).valueOrNull;
+    if (currentUser == null) return;
+
+    // Don't allow chatting with yourself
+    if (currentUser.userId == widget.user.userId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot chat with yourself')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      const storage = ConversationStorage();
+      final conversation = await storage.getOrCreateDirectConversation(
+        currentUser.userId,
+        widget.user.userId,
+      );
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ConversationView(
+              conversation: conversation,
+              title: widget.user.displayName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start chat: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _removeMember() async {
     final confirmed = await showDialog<bool>(
@@ -647,6 +695,13 @@ class _MemberCardState extends State<_MemberCard> {
                       )
                     : Column(
                         children: [
+                          _ActionButton(
+                            icon: Icons.chat_bubble_outline,
+                            label: 'Chat',
+                            color: AppColors.primaryBlue,
+                            onTap: _startChat,
+                          ),
+                          const SizedBox(height: 8),
                           _ActionButton(
                             icon: widget.isCoachMember
                                 ? Icons.sports_soccer
