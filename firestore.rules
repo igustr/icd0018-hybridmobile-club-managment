@@ -64,12 +64,13 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.role == "player";
 
-      // Allow reading own profile, or coaches can read any user (for attendance view)
+      // Allow reading any user profile (for attendance view, team roster)
       allow read: if signedIn();
 
+      // Users can update own profile; coaches can update any user's teamIds
       allow update: if signedIn()
-        && userId == request.auth.uid
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role == resource.data.role
+        && (userId == request.auth.uid || isCoach());
 
       allow delete: if false;
     }

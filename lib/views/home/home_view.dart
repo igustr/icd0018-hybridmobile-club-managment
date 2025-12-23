@@ -6,6 +6,7 @@ import 'package:icd0018_hybridmobile_club_managment/state/teams/dto/team_dto.dar
 import 'package:icd0018_hybridmobile_club_managment/views/components/animations/club_animation.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/schedule/schedule_view.dart';
+import 'package:icd0018_hybridmobile_club_managment/views/team/team_view.dart';
 
 class HomeView extends ConsumerStatefulWidget {
   const HomeView({super.key});
@@ -28,10 +29,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
     final pages = <Widget>[
       const _HomeContent(),
       const ScheduleView(),
-      const _PlaceholderPage(
-        title: 'Team Overview',
-        subtitle: 'Roster, roles and stats will be shown here.',
-      ),
+      const TeamView(),
       const _PlaceholderPage(
         title: 'Chat',
         subtitle: 'Conversations will be available soon.',
