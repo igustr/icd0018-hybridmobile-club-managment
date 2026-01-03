@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,6 +23,7 @@ class AppleAuth {
         final rawNonce = _generateNonce();
         final nonce = _sha256ofString(rawNonce);
 
+        print('Apple Sign-In: Getting Apple credential...');
         final appleCredential = await SignInWithApple.getAppleIDCredential(
           scopes: [
             AppleIDAuthorizationScopes.email,
@@ -29,16 +31,20 @@ class AppleAuth {
           ],
           nonce: nonce,
         );
+        print('Apple Sign-In: Got Apple credential, identity token: ${appleCredential.identityToken != null}');
 
         final oauthCredential = OAuthProvider('apple.com').credential(
           idToken: appleCredential.identityToken,
           rawNonce: rawNonce,
         );
 
+        print('Apple Sign-In: Signing in with Firebase...');
         await _firebaseAuth.signInWithCredential(oauthCredential);
+        print('Apple Sign-In: Firebase sign-in complete');
         return AuthResult.success;
       }
-    } catch (_) {
+    } catch (e) {
+      print('Apple Sign-In error: $e');
       return AuthResult.failure;
     }
   }
@@ -47,11 +53,9 @@ class AppleAuth {
   String _generateNonce([int length = 32]) {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-    final random = List.generate(length, (_) {
-      final index = DateTime.now().microsecondsSinceEpoch % charset.length;
-      return charset[index];
-    });
-    return random.join();
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
   }
 
   String _sha256ofString(String input) {

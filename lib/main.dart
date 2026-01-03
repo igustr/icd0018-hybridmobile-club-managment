@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:icd0018_hybridmobile_club_managment/router/router.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/notifications/local_notification_service.dart';
 import 'firebase_options.dart';
 
 
@@ -11,6 +12,10 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize local notifications
+  await LocalNotificationService.instance.initialize();
+  await LocalNotificationService.instance.requestPermissions();
 
   // Wait for Firebase Auth to restore the persisted session
   await FirebaseAuth.instance.authStateChanges().first;

@@ -4,6 +4,7 @@ import 'package:icd0018_hybridmobile_club_managment/state/attendance/dto/attenda
 import 'package:icd0018_hybridmobile_club_managment/state/events/dto/event_dto.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/events/providers/events_for_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/current_user_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/notifications/notification_scheduler.dart';
 
 class UpcomingEventWithAttendance {
   final EventDto event;
@@ -66,6 +67,18 @@ final upcomingEventsWithAttendanceProvider =
       needsAttention: needsAttention,
     ));
   }
+
+  // Schedule notifications for upcoming events
+  final attendanceMap = <String, AttendanceDto?>{};
+  for (final result in results) {
+    attendanceMap[result.event.eventId] = result.myAttendance;
+  }
+
+  await NotificationScheduler.instance.scheduleEventReminders(
+    events: results.map((r) => r.event).toList(),
+    attendanceMap: attendanceMap,
+    userRole: user.role,
+  );
 
   return results;
 });
