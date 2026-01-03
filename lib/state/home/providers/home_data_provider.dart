@@ -190,6 +190,68 @@ class PlayerAttendanceStats {
   int get respondedCount => attended + missed + maybe;
 }
 
+/// For coaches: last past event with attendance stats (when no upcoming events)
+final lastPastEventWithStatsProvider =
+    FutureProvider.autoDispose<EventAttendanceStats?>((ref) async {
+  final userAsync = ref.watch(currentUserProvider);
+  final eventsAsync = ref.watch(eventsForUserProvider);
+
+  final user = userAsync.valueOrNull;
+  final events = eventsAsync.valueOrNull;
+
+  if (user == null || events == null) {
+    return null;
+  }
+
+  final now = DateTime.now();
+
+  // Get the most recent past event
+  final pastEvents = events
+      .where((e) => e.startTime.isBefore(now))
+      .toList()
+    ..sort((a, b) => b.startTime.compareTo(a.startTime));
+
+  if (pastEvents.isEmpty) {
+    return null;
+  }
+
+  final lastEvent = pastEvents.first;
+
+  const storage = AttendanceStorage();
+  final attendanceList = await storage
+      .watchAttendanceForEvent(lastEvent.eventId)
+      .first;
+
+  int coming = 0;
+  int notComing = 0;
+  int maybe = 0;
+
+  for (final a in attendanceList) {
+    switch (a.status) {
+      case 'coming':
+        coming++;
+        break;
+      case 'not_coming':
+        notComing++;
+        break;
+      case 'maybe':
+        maybe++;
+        break;
+    }
+  }
+
+  final responded = coming + notComing + maybe;
+
+  return EventAttendanceStats(
+    event: lastEvent,
+    coming: coming,
+    notComing: notComing,
+    maybe: maybe,
+    noResponse: 0,
+    total: responded > 0 ? responded : 1,
+  );
+});
+
 /// For players: their personal attendance stats
 final playerAttendanceStatsProvider =
     FutureProvider.autoDispose<PlayerAttendanceStats>((ref) async {

@@ -65,7 +65,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
     final user = userAsync.valueOrNull;
 
     final pages = <Widget>[
-      const _HomeContent(),
+      _HomeContent(
+        onNavigateToTeam: () => _onNavTap(2),
+        onNavigateToSchedule: () => _onNavTap(1),
+      ),
       const ScheduleView(),
       const TeamView(),
       const ChatListView(),
@@ -186,7 +189,13 @@ class _BottomNav extends ConsumerWidget {
 }
 
 class _HomeContent extends ConsumerWidget {
-  const _HomeContent();
+  const _HomeContent({
+    required this.onNavigateToTeam,
+    required this.onNavigateToSchedule,
+  });
+
+  final VoidCallback onNavigateToTeam;
+  final VoidCallback onNavigateToSchedule;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -208,8 +217,15 @@ class _HomeContent extends ConsumerWidget {
             ref.invalidate(upcomingEventsWithStatsProvider);
           },
           child: isCoach
-              ? _CoachHomeContent(user: user)
-              : _PlayerHomeContent(user: user),
+              ? _CoachHomeContent(
+                  user: user,
+                  onNavigateToTeam: onNavigateToTeam,
+                  onNavigateToSchedule: onNavigateToSchedule,
+                )
+              : _PlayerHomeContent(
+                  user: user,
+                  onNavigateToTeam: onNavigateToTeam,
+                ),
         );
       },
     );
@@ -219,9 +235,10 @@ class _HomeContent extends ConsumerWidget {
 // ============ PLAYER HOME ============
 
 class _PlayerHomeContent extends ConsumerWidget {
-  const _PlayerHomeContent({required this.user});
+  const _PlayerHomeContent({required this.user, required this.onNavigateToTeam});
 
   final UserDto user;
+  final VoidCallback onNavigateToTeam;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -230,6 +247,11 @@ class _PlayerHomeContent extends ConsumerWidget {
     final conversationsAsync = ref.watch(conversationsForUserProvider);
     final teamsAsync = ref.watch(teamsForCurrentUserProvider);
     final teams = teamsAsync.valueOrNull ?? [];
+
+    // Show waiting message if user has no team
+    if (teamsAsync.hasValue && teams.isEmpty) {
+      return const _WaitingForTeamCard();
+    }
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -273,7 +295,7 @@ class _PlayerHomeContent extends ConsumerWidget {
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (events) {
               if (events.isEmpty) {
-                return const _NoEventsCard();
+                return _NoEventsCard(onNavigateToTeam: onNavigateToTeam);
               }
 
               return Column(
@@ -779,13 +801,20 @@ class _PlayerEventCard extends StatelessWidget {
 // ============ COACH HOME ============
 
 class _CoachHomeContent extends ConsumerWidget {
-  const _CoachHomeContent({required this.user});
+  const _CoachHomeContent({
+    required this.user,
+    required this.onNavigateToTeam,
+    required this.onNavigateToSchedule,
+  });
 
   final UserDto user;
+  final VoidCallback onNavigateToTeam;
+  final VoidCallback onNavigateToSchedule;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(upcomingEventsWithStatsProvider);
+    final lastEventAsync = ref.watch(lastPastEventWithStatsProvider);
     final teamsAsync = ref.watch(teamsForCurrentUserProvider);
     final conversationsAsync = ref.watch(conversationsForUserProvider);
     final teams = teamsAsync.valueOrNull ?? [];
@@ -796,7 +825,7 @@ class _CoachHomeContent extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Attendance overview first
+          // Attendance overview first (or last event stats if no upcoming)
           statsAsync.when(
             loading: () => const Center(
               child: Padding(
@@ -807,7 +836,20 @@ class _CoachHomeContent extends ConsumerWidget {
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (events) {
               if (events.isEmpty) {
-                return const SizedBox.shrink();
+                // Show last event stats if no upcoming events
+                return lastEventAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (lastEvent) {
+                    if (lastEvent == null) {
+                      return const SizedBox.shrink();
+                    }
+                    final team = teams.where(
+                      (t) => t.teamId == lastEvent.event.teamId,
+                    ).firstOrNull;
+                    return _LastEventStats(stats: lastEvent, team: team);
+                  },
+                );
               }
               return _CoachQuickStats(events: events);
             },
@@ -826,7 +868,18 @@ class _CoachHomeContent extends ConsumerWidget {
             error: (_, __) => const SizedBox.shrink(),
             data: (events) {
               if (events.isEmpty) {
-                return const _NoEventsCard(isCoach: true);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    _GoToTeamCard(onTap: onNavigateToTeam),
+                    const SizedBox(height: 16),
+                    _NoEventsCard(
+                      isCoach: true,
+                      onAddSession: onNavigateToSchedule,
+                    ),
+                  ],
+                );
               }
 
               return Column(
@@ -922,6 +975,85 @@ class _CoachQuickStats extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LastEventStats extends StatelessWidget {
+  const _LastEventStats({required this.stats, this.team});
+
+  final EventAttendanceStats stats;
+  final TeamDto? team;
+
+  @override
+  Widget build(BuildContext context) {
+    final event = stats.event;
+    final dateStr = '${event.startTime.day}/${event.startTime.month}/${event.startTime.year}';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade600, Colors.grey.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Last Event Statistics',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_formatEventType(event.type)} - $dateStr',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+            ),
+          ),
+          if (team != null) ...[
+            Text(
+              team!.name,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 11,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _StatBubble(
+                icon: Icons.check_circle,
+                value: stats.coming,
+                label: 'Came',
+                color: Colors.green,
+              ),
+              const SizedBox(width: 12),
+              _StatBubble(
+                icon: Icons.cancel,
+                value: stats.notComing,
+                label: 'Missed',
+                color: Colors.red,
+              ),
+              const SizedBox(width: 12),
+              _StatBubble(
+                icon: Icons.help,
+                value: stats.maybe,
+                label: 'Maybe',
+                color: Colors.amber,
+              ),
+            ],
           ),
         ],
       ),
@@ -1151,45 +1283,186 @@ class _AttendanceChip extends StatelessWidget {
 
 // ============ SHARED COMPONENTS ============
 
-class _NoEventsCard extends StatelessWidget {
-  const _NoEventsCard({this.isCoach = false});
-
-  final bool isCoach;
+class _WaitingForTeamCard extends StatelessWidget {
+  const _WaitingForTeamCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.event_available,
-            size: 48,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No upcoming events',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.groups_outlined,
+                size: 40,
+                color: AppColors.primaryBlue,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            isCoach
-                ? 'Create an event from the Schedule tab'
-                : 'Check back later for new events',
-            style: TextStyle(color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              'No Team Yet',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Wait until your coach adds you to a team',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 15,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoToTeamCard extends StatelessWidget {
+  const _GoToTeamCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.group,
+                color: AppColors.primaryBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Team',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'View and manage your team',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[400],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoEventsCard extends StatelessWidget {
+  const _NoEventsCard({
+    this.isCoach = false,
+    this.onAddSession,
+    this.onNavigateToTeam,
+  });
+
+  final bool isCoach;
+  final VoidCallback? onAddSession;
+  final VoidCallback? onNavigateToTeam;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.event_available,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No upcoming events',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isCoach
+                  ? 'Schedule a training or match'
+                  : 'Check back later for new events',
+              style: TextStyle(color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            if (isCoach && onAddSession != null)
+              ElevatedButton.icon(
+                onPressed: onAddSession,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Session'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                ),
+              )
+            else if (onNavigateToTeam != null)
+              OutlinedButton.icon(
+                onPressed: onNavigateToTeam,
+                icon: const Icon(Icons.group),
+                label: const Text('Go to Team'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryBlue,
+                  side: const BorderSide(color: AppColors.primaryBlue),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
