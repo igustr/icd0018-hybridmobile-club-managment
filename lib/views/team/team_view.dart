@@ -119,6 +119,7 @@ class _TeamRosterViewState extends State<_TeamRosterView> {
       teams: widget.teams,
       isCoach: widget.isCoach,
       ref: widget.ref,
+      currentUserId: widget.user.userId,
       onTeamSelected: (team) {
         setState(() {
           _selectedTeam = team;
@@ -135,6 +136,7 @@ class _RosterList extends StatefulWidget {
     required this.isCoach,
     required this.ref,
     required this.onTeamSelected,
+    required this.currentUserId,
   });
 
   final TeamDto team;
@@ -142,6 +144,7 @@ class _RosterList extends StatefulWidget {
   final bool isCoach;
   final WidgetRef ref;
   final ValueChanged<TeamDto> onTeamSelected;
+  final String currentUserId;
 
   @override
   State<_RosterList> createState() => _RosterListState();
@@ -274,6 +277,7 @@ class _RosterListState extends State<_RosterList> {
                     team: widget.team,
                     onChanged: _refreshTeams,
                     ref: widget.ref,
+                    currentUserId: widget.currentUserId,
                   )),
               const SizedBox(height: 24),
             ],
@@ -289,6 +293,7 @@ class _RosterListState extends State<_RosterList> {
                     team: widget.team,
                     onChanged: _refreshTeams,
                     ref: widget.ref,
+                    currentUserId: widget.currentUserId,
                   )),
             ],
           ],
@@ -415,6 +420,7 @@ class _MemberCard extends StatefulWidget {
     required this.team,
     required this.onChanged,
     required this.ref,
+    required this.currentUserId,
   });
 
   final UserDto user;
@@ -425,6 +431,7 @@ class _MemberCard extends StatefulWidget {
   final TeamDto team;
   final VoidCallback onChanged;
   final WidgetRef ref;
+  final String currentUserId;
 
   @override
   State<_MemberCard> createState() => _MemberCardState();
@@ -595,12 +602,17 @@ class _MemberCardState extends State<_MemberCard> {
     }
   }
 
+  bool get _isSelf => widget.user.userId == widget.currentUserId;
+
+  // Can expand if not yourself
+  bool get _canExpand => !_isSelf;
+
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-        onTap: widget.isCoach
+        onTap: _canExpand
             ? () {
                 setState(() {
                   _isExpanded = !_isExpanded;
@@ -631,9 +643,23 @@ class _MemberCardState extends State<_MemberCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.user.displayName,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        Row(
+                          children: [
+                            Text(
+                              widget.user.displayName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            if (_isSelf) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '(You)',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         if (widget.user.email != null &&
                             widget.user.email!.isNotEmpty)
@@ -663,7 +689,7 @@ class _MemberCardState extends State<_MemberCard> {
                       ),
                     ),
                   ),
-                  if (widget.isCoach) ...[
+                  if (_canExpand) ...[
                     const SizedBox(width: 8),
                     Icon(
                       _isExpanded
@@ -675,7 +701,7 @@ class _MemberCardState extends State<_MemberCard> {
                 ],
               ),
             ),
-            if (widget.isCoach && _isExpanded)
+            if (_canExpand && _isExpanded)
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
@@ -695,32 +721,36 @@ class _MemberCardState extends State<_MemberCard> {
                       )
                     : Column(
                         children: [
+                          // Chat button - available to everyone
                           _ActionButton(
                             icon: Icons.chat_bubble_outline,
                             label: 'Chat',
                             color: AppColors.primaryBlue,
                             onTap: _startChat,
                           ),
-                          const SizedBox(height: 8),
-                          _ActionButton(
-                            icon: widget.isCoachMember
-                                ? Icons.sports_soccer
-                                : Icons.sports,
-                            label: widget.isCoachMember
-                                ? 'Make Player'
-                                : 'Make Coach',
-                            color: widget.isCoachMember
-                                ? Colors.green
-                                : AppColors.primaryBlue,
-                            onTap: _changeRole,
-                          ),
-                          const SizedBox(height: 8),
-                          _ActionButton(
-                            icon: Icons.person_remove,
-                            label: 'Remove from team',
-                            color: Colors.red,
-                            onTap: _removeMember,
-                          ),
+                          // Coach-only options
+                          if (widget.isCoach) ...[
+                            const SizedBox(height: 8),
+                            _ActionButton(
+                              icon: widget.isCoachMember
+                                  ? Icons.sports_soccer
+                                  : Icons.sports,
+                              label: widget.isCoachMember
+                                  ? 'Make Player'
+                                  : 'Make Coach',
+                              color: widget.isCoachMember
+                                  ? Colors.green
+                                  : AppColors.primaryBlue,
+                              onTap: _changeRole,
+                            ),
+                            const SizedBox(height: 8),
+                            _ActionButton(
+                              icon: Icons.person_remove,
+                              label: 'Remove from team',
+                              color: Colors.red,
+                              onTap: _removeMember,
+                            ),
+                          ],
                         ],
                       ),
               ),
