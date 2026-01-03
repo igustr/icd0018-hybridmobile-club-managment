@@ -37,7 +37,7 @@ class NotificationScheduler {
           await _scheduleOneDayReminder(event);
         } else {
           // Cancel any existing 1-day reminder if user already made decision
-          await _cancelOneDayReminder(event.eventId);
+          await cancelOneDayReminder(event.eventId);
         }
       }
     }
@@ -83,7 +83,8 @@ class NotificationScheduler {
     );
   }
 
-  Future<void> _cancelOneDayReminder(String eventId) async {
+  /// Cancel only the 1-day attendance reminder (user made decision)
+  Future<void> cancelOneDayReminder(String eventId) async {
     final id = _generateNotificationId(eventId, '1d');
     await _notificationService.cancelNotification(id);
   }

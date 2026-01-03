@@ -15,6 +15,8 @@ import 'package:icd0018_hybridmobile_club_managment/state/users/dto/user_dto.dar
 import 'package:icd0018_hybridmobile_club_managment/state/users/providers/current_user_provider.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/attendance/event_attendance_view.dart';
 import 'package:icd0018_hybridmobile_club_managment/views/constants/app_colors.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/home/providers/home_data_provider.dart';
+import 'package:icd0018_hybridmobile_club_managment/state/notifications/notification_scheduler.dart';
 
 class ScheduleView extends ConsumerWidget {
   const ScheduleView({super.key});
@@ -341,7 +343,7 @@ class _EventCardState extends ConsumerState<_EventCard> {
   }
 }
 
-class _AttendanceOptions extends StatelessWidget {
+class _AttendanceOptions extends ConsumerWidget {
   const _AttendanceOptions({
     required this.event,
     required this.user,
@@ -355,7 +357,7 @@ class _AttendanceOptions extends StatelessWidget {
   final VoidCallback onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[100],
@@ -376,7 +378,7 @@ class _AttendanceOptions extends StatelessWidget {
                 color: isSelected ? status.color.withValues(alpha: 0.2) : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 child: InkWell(
-                  onTap: () => _onStatusSelected(context, status),
+                  onTap: () => _onStatusSelected(context, ref, status),
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -409,7 +411,7 @@ class _AttendanceOptions extends StatelessWidget {
     );
   }
 
-  Future<void> _onStatusSelected(BuildContext context, AttendanceStatus status) async {
+  Future<void> _onStatusSelected(BuildContext context, WidgetRef ref, AttendanceStatus status) async {
     String? reason;
 
     if (status.requiresReason) {
@@ -428,6 +430,14 @@ class _AttendanceOptions extends StatelessWidget {
 
     try {
       await const AttendanceStorage().setAttendance(attendance);
+
+      // Refresh home screen data
+      ref.invalidate(upcomingEventsWithAttendanceProvider);
+      ref.invalidate(eventsNeedingAttentionProvider);
+
+      // Cancel the 1-day reminder since user made a decision
+      await NotificationScheduler.instance.cancelOneDayReminder(event.eventId);
+
       onSelected();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
