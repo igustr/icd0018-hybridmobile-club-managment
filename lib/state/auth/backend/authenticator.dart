@@ -37,7 +37,6 @@ class Authenticator {
   }
 
   // EMAIL/PASSWORD
-
   Future<AuthResult> loginWithEmailAndPassword(String email, String password) {
     return _emailAuth.loginWithEmailAndPassword(email, password);
   }
